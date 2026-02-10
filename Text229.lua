@@ -3,14 +3,35 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local bodyPos, bodyGyro
-local target
+local bodyPos, bodyGyro, target
 
--- Valores por defecto (se pueden modificar desde TextBox)
+-- Valores por defecto
 _G.MAX_RANGE = _G.MAX_RANGE or 25
 _G.FOLLOW_DISTANCE = _G.FOLLOW_DISTANCE or 4
 
--- Función para obtener un objetivo aleatorio dentro del rango
+-- Toggle global
+if _G.AutoFollowEnabled == nil then
+    _G.AutoFollowEnabled = true
+else
+    -- Si ya existe, invertir toggle
+    _G.AutoFollowEnabled = not _G.AutoFollowEnabled
+end
+
+-- ===== ELIMINAR INSTANCIAS PREVIAS =====
+if _G.__AutoFollowHeartbeat then
+    _G.__AutoFollowHeartbeat:Disconnect()
+    _G.__AutoFollowHeartbeat = nil
+end
+if _G.__AutoFollowBodyPos then
+    _G.__AutoFollowBodyPos:Destroy()
+    _G.__AutoFollowBodyPos = nil
+end
+if _G.__AutoFollowBodyGyro then
+    _G.__AutoFollowBodyGyro:Destroy()
+    _G.__AutoFollowBodyGyro = nil
+end
+
+-- ===== FUNCIONES =====
 local function getRandomTarget()
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
@@ -35,7 +56,6 @@ local function getRandomTarget()
     return nil
 end
 
--- Crear BodyPosition y BodyGyro si no existen
 local function setupBody(character)
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
@@ -46,6 +66,7 @@ local function setupBody(character)
         bodyPos.D = 10
         bodyPos.P = 3000
         bodyPos.Parent = hrp
+        _G.__AutoFollowBodyPos = bodyPos
     end
 
     if not bodyGyro then
@@ -54,18 +75,23 @@ local function setupBody(character)
         bodyGyro.D = 10
         bodyGyro.P = 3000
         bodyGyro.Parent = hrp
+        _G.__AutoFollowBodyGyro = bodyGyro
     end
 end
 
--- Eliminar BodyPosition y BodyGyro
 local function removeBody()
     if bodyPos then bodyPos:Destroy(); bodyPos = nil end
     if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
     target = nil
 end
 
--- Loop principal
-RunService.Heartbeat:Connect(function()
+-- ===== HEARTBEAT =====
+_G.__AutoFollowHeartbeat = RunService.Heartbeat:Connect(function()
+    if not _G.AutoFollowEnabled then
+        removeBody()
+        return
+    end
+
     local liveFolder = Workspace:FindFirstChild("Live")
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -77,7 +103,6 @@ RunService.Heartbeat:Connect(function()
     local myModel = liveFolder and liveFolder:FindFirstChild(LocalPlayer.Name)
 
     if myModel and myModel:FindFirstChild("M1ing") then
-        -- Tenemos M1ing
         if not target or not target.Parent or (target.Position - hrp.Position).Magnitude > (_G.MAX_RANGE or 25) then
             target = getRandomTarget()
         end
@@ -87,19 +112,16 @@ RunService.Heartbeat:Connect(function()
             local distance = (target.Position - hrp.Position).Magnitude
             if distance > (_G.FOLLOW_DISTANCE or 4) then
                 local direction = (target.Position - hrp.Position).Unit
-                local followPos = target.Position - direction * (_G.FOLLOW_DISTANCE or 4) + Vector3.new(0, 0, 0)
+                local followPos = target.Position - direction * (_G.FOLLOW_DISTANCE or 4)
                 bodyPos.Position = followPos
                 bodyGyro.CFrame = CFrame.new(hrp.Position, target.Position)
             else
-                -- A distancia de seguimiento, quedarnos tranquilos
                 bodyPos.Position = hrp.Position
             end
         else
-            -- No hay objetivos dentro del rango
             removeBody()
         end
     else
-        -- No tenemos M1ing
         removeBody()
     end
 end)
