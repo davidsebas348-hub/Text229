@@ -87,7 +87,7 @@ RunService.Heartbeat:Connect(function()
             local distance = (target.Position - hrp.Position).Magnitude
             if distance > (_G.FOLLOW_DISTANCE or 4) then
                 local direction = (target.Position - hrp.Position).Unit
-                local followPos = target.Position - direction * (_G.FOLLOW_DISTANCE or 4) + Vector3.new(0, 1.5, 0)
+                local followPos = target.Position - direction * (_G.FOLLOW_DISTANCE or 4) + Vector3.new(0, 0, 0)
                 bodyPos.Position = followPos
                 bodyGyro.CFrame = CFrame.new(hrp.Position, target.Position)
             else
